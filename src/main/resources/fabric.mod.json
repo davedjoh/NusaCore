@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "nusacore",
+  "version": "${version}",
+  "name": "NusaCore",
+  "description": "NusaCore client and server mod. Implements the permission-gated /lobby command; other gameplay modules are not implemented yet.",
+  "environment": "*",
+  "entrypoints": {
+    "server": ["com.dave.nusacore.NusaCore"],
+    "client": ["com.dave.nusacore.client.NusaCoreClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.161.0+26.2",
+    "fabric-permissions-api-v0": "*"
+  },
+  "suggests": {
+    "luckperms": ">=5.5.85"
+  }
+}
