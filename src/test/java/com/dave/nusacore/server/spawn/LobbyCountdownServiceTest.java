@@ -62,8 +62,8 @@ class LobbyCountdownServiceTest {
         StartResult second = service.start(adapter.player());
 
         assertEquals(StartResult.ALREADY_PENDING, second);
-        assertEquals(MessageText.resolve(Messages.LOBBY_ALREADY_PENDING),
-                adapter.messages().get(adapter.messages().size() - 1));
+        assertFalse(adapter.messages().contains(MessageText.resolve(Messages.LOBBY_ALREADY_PENDING)),
+                "the service returns the refusal and sends nothing, so the caller reports it once");
         assertEquals(1, service.pendingCount(), "one player never has two countdowns");
         assertEquals(3, service.remainingSeconds(adapter.player()).orElseThrow(),
                 "the refused request did not reset the countdown");
@@ -280,7 +280,7 @@ class LobbyCountdownServiceTest {
         StartResult result = service.start(adapter.player());
 
         assertEquals(StartResult.DENIED, result);
-        assertEquals(List.of(MessageText.resolve(Messages.NO_PERMISSION)), adapter.messages());
+        assertEquals(List.of(), adapter.messages(), "the service sends nothing for a refused start");
         assertEquals(0, adapter.overworldOpened(), "a denied request does no world work");
         assertEquals(0, service.pendingCount());
     }
@@ -291,7 +291,7 @@ class LobbyCountdownServiceTest {
         LobbyCountdownService<Player> service = service(adapter);
 
         assertEquals(StartResult.NO_OVERWORLD, service.start(adapter.player()));
-        assertEquals(List.of(MessageText.resolve(Messages.LOBBY_NO_OVERWORLD)), adapter.messages());
+        assertEquals(List.of(), adapter.messages(), "the service sends nothing for a refused start");
         assertEquals(0, service.pendingCount());
     }
 
@@ -301,7 +301,7 @@ class LobbyCountdownServiceTest {
         LobbyCountdownService<Player> service = service(adapter);
 
         assertEquals(StartResult.NO_SAFE_DESTINATION, service.start(adapter.player()));
-        assertEquals(List.of(MessageText.resolve(Messages.LOBBY_NO_SAFE_DESTINATION)), adapter.messages());
+        assertEquals(List.of(), adapter.messages(), "the service sends nothing for a refused start");
         assertEquals(0, service.pendingCount());
     }
 
@@ -311,6 +311,7 @@ class LobbyCountdownServiceTest {
         LobbyCountdownService<Player> service = service(adapter);
 
         assertEquals(StartResult.PLAYER_GONE, service.start(adapter.player()));
+        assertEquals(List.of(), adapter.messages(), "a gone player is not sent a start failure by the service");
         assertEquals(0, service.pendingCount());
     }
 

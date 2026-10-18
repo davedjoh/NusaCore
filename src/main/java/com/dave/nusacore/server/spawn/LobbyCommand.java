@@ -24,7 +24,8 @@ import java.util.function.Function;
  *
  * <p>The Overworld is resolved by the countdown's adapter each time a request starts and is wrapped in
  * {@link LevelLobbyTarget}, which both reads the view and performs the move, so a player in another dimension is
- * transferred to the Overworld spawn. A failed start sends only a message and leaves the player where they were.
+ * transferred to the Overworld spawn. A failed start leaves the player where they were and is reported once here:
+ * the service returns the failure without sending it, so the command is the only reporter.
  *
  * <p>The player is a type parameter, matching {@link LobbyCountdownService}, so the command shape and its
  * non-player path can be exercised without a running server. Production uses {@code ServerPlayer} and reads it
@@ -40,7 +41,7 @@ public final class LobbyCommand<P> {
     private final Function<CommandSourceStack, P> playerOf;
 
     /**
-     * @param countdown the countdown owner that decides and reports
+     * @param countdown the countdown owner that decides the start and reports countdown feedback
      * @param playerOf reads the executing player from a command source, or {@code null} for console and blocks
      */
     public LobbyCommand(LobbyCountdownService<P> countdown, Function<CommandSourceStack, P> playerOf) {
@@ -65,6 +66,7 @@ public final class LobbyCommand<P> {
             // The start message already reached the player, so the command adds no second line.
             return Command.SINGLE_SUCCESS;
         }
+        // The service returns the failure without sending it, so this is the only report of it.
         Component failure = result.message();
         if (failure != null) {
             source.sendFailure(failure);

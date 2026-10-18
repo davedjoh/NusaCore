@@ -14,6 +14,18 @@ Implemented: the bootstrap lifecycle and the first gameplay slice, `/lobby`. Not
 - Respawn: vanilla first join and bed or anchor respawn behavior is untouched. `/lobby` never writes respawn data.
 - `/lobby` is registered without arguments. If another mod already registers `/lobby`, NusaCore does not replace it. There is no `/spawn` alias and no `/setspawn` command.
 
+### Countdown
+
+A request does not teleport immediately. The server starts a 5-second countdown (`Messages.LOBBY_COUNTDOWN_SECONDS`) and moves the player only when it finishes.
+
+- Timing: one step per 20 server ticks on the server tick loop. Nothing sleeps, blocks, starts a thread, or touches disk. The countdown length is a constant; moving it to config is future work.
+- Feedback: a start message with the full number, then one message per remaining second (`5, 4, 3, 2, 1`), then the success line. Each step plays the vanilla `ui.button.click` sound privately to that player on the UI channel, with the pitch rising each second; the successful teleport plays `ui.toast.challenge_complete`. Other players hear nothing.
+- Duplicate requests: one countdown per player. A second `/lobby` while one is pending answers with a message and does not restart, extend, or queue it.
+- Cancellation: moving, dying, changing dimension, losing the permission node, disconnecting, or the server stopping ends the countdown with a message instead of a teleport. Looking around is not movement. A cancelled countdown cannot be resumed.
+- Authority: the permission node, player liveness, dimension, and the destination are re-checked by the server during the countdown. The destination is resolved once when the request starts, and the teleport uses the same level the safe position was read from.
+- Failure: if the server refuses the move at the last second, the player is told and stays where they were; no completion sound plays.
+- Cleanup: countdowns are in memory only. A disconnect or server stop removes the pending entry, so a restarted server never resumes one.
+
 ### Permission
 
 The command requires the LuckPerms node `nusacore.spawn.lobby`, for example:

@@ -52,7 +52,7 @@ public final class LobbyCountdownService<P> {
             return this == STARTED;
         }
 
-        /** The message for a failed start, or {@code null} when a countdown started. */
+        /** The message for a failed start, or {@code null} when a countdown started. The caller reports it. */
         public Component message() {
             return switch (this) {
                 case STARTED -> null;
@@ -152,26 +152,30 @@ public final class LobbyCountdownService<P> {
      * destination, the player's liveness, and only then the countdown. The destination is resolved once, here, so
      * the safety rules see the world as it is when the player asks; the teleport itself re-checks the player.
      *
-     * @return what happened, so the caller can choose the command result
+     * <p>A refused start sends nothing. The result carries the message so the caller reports it once, next to
+     * whatever command result it chooses. The service still reports a started countdown, each announced second, and
+     * every ending, because those belong to the countdown it owns.
+     *
+     * @return what happened, so the caller can choose the command result and report a failure
      */
     public StartResult start(P player) {
         Objects.requireNonNull(player, "player");
         if (pending.containsKey(adapter.id(player))) {
-            return report(player, StartResult.ALREADY_PENDING);
+            return StartResult.ALREADY_PENDING;
         }
         if (!adapter.permitted(player)) {
-            return report(player, StartResult.DENIED);
+            return StartResult.DENIED;
         }
         LobbyTarget<P> target = adapter.overworld(player);
         LobbyService.Outcome outcome = lobbyService.resolve(target == null ? null : target.surface());
         if (!outcome.ready()) {
-            return report(player, outcome.status() == LobbyService.Outcome.Status.NO_OVERWORLD
+            return outcome.status() == LobbyService.Outcome.Status.NO_OVERWORLD
                     ? StartResult.NO_OVERWORLD
-                    : StartResult.NO_SAFE_DESTINATION);
+                    : StartResult.NO_SAFE_DESTINATION;
         }
         Pose pose = adapter.pose(player);
         if (pose == null || !adapter.available(player) || !adapter.alive(player)) {
-            return report(player, StartResult.PLAYER_GONE);
+            return StartResult.PLAYER_GONE;
         }
         pending.put(adapter.id(player), new Pending<>(
                 player,
@@ -182,14 +186,6 @@ public final class LobbyCountdownService<P> {
         adapter.send(player, Messages.lobbyCountdownStarted(seconds));
         adapter.playStepSound(player, seconds);
         return StartResult.STARTED;
-    }
-
-    private StartResult report(P player, StartResult result) {
-        Component message = result.message();
-        if (message != null) {
-            adapter.send(player, message);
-        }
-        return result;
     }
 
     /**
