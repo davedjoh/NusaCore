@@ -11,6 +11,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.MinecraftServer;
@@ -45,6 +46,12 @@ import java.util.UUID;
  */
 public final class LobbyCountdownRuntime {
     private static final Logger LOGGER = LoggerFactory.getLogger("nusacore");
+
+    /** Sound volume, the pitch of the first countdown second, and the pitch added per later second. */
+    private static final float SOUND_VOLUME = 1.0F;
+    private static final float MIN_PITCH = 1.0F;
+    private static final float PITCH_STEP = 0.1F;
+    private static final float MAX_PITCH = 2.0F;
 
     private final LobbyCountdownService<ServerPlayer> service;
 
@@ -124,18 +131,19 @@ public final class LobbyCountdownRuntime {
     }
 
     /** Sends one sound to one player's client only. A removed or disconnected player is skipped. */
-    static void play(ServerPlayer player, Holder<SoundEvent> sound, float pitch) {
-        if (!ServerPlayerAdapter.available(player)) {
+    static void play(ServerPlayer player, SoundEvent sound, float pitch) {
+        if (!ServerPlayerAdapter.canReceive(player)) {
             return;
         }
         player.connection.send(new ClientboundSoundPacket(
-                sound, SoundSource.UI, 0.0, 0.0, 0.0, SOUND_VOLUME, pitch, player.getRandom().nextLong()));
+                player.level().getServer().registryAccess().lookupOrThrow(Registries.SOUND_EVENT).wrapAsHolder(sound),
+                SoundSource.UI, 0.0, 0.0, 0.0, SOUND_VOLUME, pitch, player.getRandom().nextLong()));
     }
 
     /** The countdown sound and the completion sound, so the two cannot be confused with each other. */
     public static final class Sounds {
-        public static final Holder<SoundEvent> STEP = SoundEvents.UI_BUTTON_CLICK;
-        public static final Holder<SoundEvent> COMPLETE = SoundEvents.UI_TOAST_CHALLENGE_COMPLETE;
+        public static final SoundEvent STEP = SoundEvents.UI_BUTTON_CLICK;
+        public static final SoundEvent COMPLETE = SoundEvents.UI_TOAST_CHALLENGE_COMPLETE;
 
         private Sounds() {
         }
@@ -177,6 +185,11 @@ public final class LobbyCountdownRuntime {
 
         @Override
         public boolean available(ServerPlayer player) {
+            return canReceive(player);
+        }
+
+        /** True when the player is still connected and attached, so a packet or message can be delivered. */
+        static boolean canReceive(ServerPlayer player) {
             return !player.hasDisconnected() && !player.isRemoved();
         }
 
@@ -197,7 +210,7 @@ public final class LobbyCountdownRuntime {
 
         @Override
         public void playStepSound(ServerPlayer player) {
-            play(player, SoundEvents.UI_BUTTON_CLICK, 1.0F);
+            play(player, Sounds.STEP, 1.0F);
         }
 
         /**
@@ -213,9 +226,8 @@ public final class LobbyCountdownRuntime {
             }
             boolean moved = target.teleport(player, destination);
             if (moved) {
-                play(player, SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, 1.0F);
+                play(player, Sounds.COMPLETE, 1.0F);
             }
-            return moved;
-        }
+            return moved;        }
     }
 }

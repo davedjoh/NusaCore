@@ -3,6 +3,7 @@ package com.dave.nusacore.server;
 import com.dave.nusacore.core.config.SpawnConfig;
 import com.dave.nusacore.core.spawn.LobbyService;
 import com.dave.nusacore.server.spawn.LobbyCommand;
+import com.dave.nusacore.server.spawn.LobbyCountdownRuntime;
 
 import com.mojang.brigadier.CommandDispatcher;
 
@@ -13,12 +14,21 @@ import net.minecraft.commands.CommandSourceStack;
 public final class NusaCoreServer {
     private static final SpawnConfig SPAWN_CONFIG = SpawnConfig.DEFAULT;
 
+    /** The lobby countdown, created once so its pending state lives for the whole server session. */
+    private static LobbyCountdownRuntime lobbyCountdown;
+
     private NusaCoreServer() {
     }
 
-    /** Registers gameplay commands. Called once from the server entrypoint. */
+    /**
+     * Registers gameplay commands and the countdown tick and lifecycle hooks. Called once from the server
+     * entrypoint.
+     */
     public static void registerCommands() {
-        LobbyCommand lobbyCommand = new LobbyCommand(new LobbyService(SPAWN_CONFIG));
+        LobbyService lobbyService = new LobbyService(SPAWN_CONFIG);
+        LobbyCountdownRuntime countdown = LobbyCountdownRuntime.install(lobbyService);
+        lobbyCountdown = countdown;
+        LobbyCommand lobbyCommand = new LobbyCommand(countdown.service());
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, buildContext, selection) -> registerLobby(dispatcher, lobbyCommand));
     }
@@ -32,5 +42,10 @@ public final class NusaCoreServer {
             return;
         }
         dispatcher.register(lobbyCommand.builder());
+    }
+
+    /** The countdown runtime for the current session, or {@code null} before the entrypoint ran. */
+    public static LobbyCountdownRuntime lobbyCountdown() {
+        return lobbyCountdown;
     }
 }
