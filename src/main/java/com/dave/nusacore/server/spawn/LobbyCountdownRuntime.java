@@ -117,36 +117,47 @@ public final class LobbyCountdownRuntime {
         });
     }
 
-    /**
-     * Countdown step pitch: a rising tone as the seconds run out, so the last second is the highest.
-     *
-     * <p>The countdown announces the full number, then each later second, and the last announcement is the
-     * final second before the move, so {@code remainingSeconds == 1} is the highest pitch.
-     *
-     * @param remainingSeconds the number being announced, at least 1
-     */
-    static float stepPitch(int remainingSeconds) {
-        int elapsed = Math.max(0, Messages.LOBBY_COUNTDOWN_SECONDS - remainingSeconds);
-        return Math.min(MAX_PITCH, MIN_PITCH + elapsed * PITCH_STEP);
-    }
-
-    /** Sends one sound to one player's client only. A removed or disconnected player is skipped. */
-    static void play(ServerPlayer player, SoundEvent sound, float pitch) {
+    /** Sends one sound to one player's client only, on the UI channel so it is not positioned in the world. */
+    static void play(ServerPlayer player, Holder<SoundEvent> sound, float pitch) {
         if (!ServerPlayerAdapter.canReceive(player)) {
             return;
         }
         player.connection.send(new ClientboundSoundPacket(
-                player.level().getServer().registryAccess().lookupOrThrow(Registries.SOUND_EVENT).wrapAsHolder(sound),
-                SoundSource.UI, 0.0, 0.0, 0.0, SOUND_VOLUME, pitch, player.getRandom().nextLong()));
+                sound, SoundSource.UI, 0.0, 0.0, 0.0, SOUND_VOLUME, pitch, player.getRandom().nextLong()));
     }
 
-    /** The countdown sound and the completion sound, so the two cannot be confused with each other. */
+    /** The two vanilla sounds the countdown uses, kept together so they stay distinct. */
     public static final class Sounds {
-        public static final SoundEvent STEP = SoundEvents.UI_BUTTON_CLICK;
+        /** Countdown step, on the UI channel so it is not positioned in the world. */
+        public static final Holder<SoundEvent> STEP = SoundEvents.UI_BUTTON_CLICK;
+        /** Completion cue, also used by vanilla's challenge-complete toast. */
         public static final SoundEvent COMPLETE = SoundEvents.UI_TOAST_CHALLENGE_COMPLETE;
 
         private Sounds() {
         }
+    }
+
+    /** Sends one completion sound, resolved as a holder through the player's own registry. */
+    static void playComplete(ServerPlayer player) {
+        if (!ServerPlayerAdapter.canReceive(player)) {
+            return;
+        }
+        play(player, player.level().getServer().registryAccess()
+                .lookupOrThrow(Registries.SOUND_EVENT)
+                .wrapAsHolder(Sounds.COMPLETE), 1.0F);
+    }
+
+    /**
+     * The countdown step sound and its pitch for a second.
+     *
+     * <p>The countdown announces the full number first, then each later second, so the pitch rises with every
+     * announcement and the last second before the move is the highest.
+     *
+     * @param remainingSeconds the number being announced, at least 1
+     */
+    static void playStep(ServerPlayer player, int remainingSeconds) {
+        int elapsed = Math.max(0, Messages.LOBBY_COUNTDOWN_SECONDS - remainingSeconds);
+        play(player, Sounds.STEP, Math.min(MAX_PITCH, MIN_PITCH + elapsed * PITCH_STEP));
     }
 
     /**
@@ -209,15 +220,15 @@ public final class LobbyCountdownRuntime {
         }
 
         @Override
-        public void playStepSound(ServerPlayer player) {
-            play(player, Sounds.STEP, 1.0F);
+        public void playStepSound(ServerPlayer player, int remainingSeconds) {
+            playStep(player, remainingSeconds);
         }
 
         /**
          * Plays the completion cue and moves the player.
          *
-         * <p>The cue is sent only when the server accepted the move, so the sound never promises a teleport
-         * that did not happen. The success text is sent by the caller.
+         * <p>The cue is sent only when the server accepted the move, so the sound never promises a teleport that
+         * did not happen. The success text is sent by the caller.
          */
         @Override
         public boolean complete(ServerPlayer player, LobbyTarget<ServerPlayer> target, BlockPos destination) {
@@ -226,8 +237,9 @@ public final class LobbyCountdownRuntime {
             }
             boolean moved = target.teleport(player, destination);
             if (moved) {
-                play(player, Sounds.COMPLETE, 1.0F);
+                playComplete(player);
             }
-            return moved;        }
+            return moved;
+        }
     }
 }

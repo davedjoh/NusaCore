@@ -22,7 +22,7 @@ import java.util.UUID;
  *
  * <p>This is the single owner of countdown state. It holds one {@link LobbyCountdown} per player at most, so a
  * second request from the same player while one is pending is refused instead of queuing, replacing, or
- * restarting the countdown. Nothing here runs on its own: {@link LobbyCountdownTicker} calls {@link #tick} once
+ * restarting the countdown. Nothing here runs on its own: {@link LobbyCountdownRuntime} calls {@link #tick} once
  * per server tick, and the player lifecycle hooks call {@link #cancel} when a player leaves, dies, or the server
  * stops.
  *
@@ -35,8 +35,8 @@ import java.util.UUID;
  */
 public final class LobbyCountdownService<P> {
 
-    /** Server ticks per countdown second: vanilla's nominal tick rate is 20 per second. */
-    public static final int TICKS_PER_SECOND = 20;
+    /** Server ticks per countdown second, taken from the state machine so the two cannot drift. */
+    public static final int TICKS_PER_SECOND = LobbyCountdown.TICKS_PER_SECOND;
 
     /** What one start produced. */
     public enum StartResult {
@@ -92,8 +92,8 @@ public final class LobbyCountdownService<P> {
         /** Sends countdown feedback to the player. */
         void send(P player, Component message);
 
-        /** Plays a countdown step sound. Called when a second is announced and when the countdown starts. */
-        void playStepSound(P player);
+        /** Plays a countdown step sound for the second being announced. */
+        void playStepSound(P player, int remainingSeconds);
 
         /** Plays the completion cue and moves the player. Returns false when the server refused the move. */
         boolean complete(P player, LobbyTarget<P> target, net.minecraft.core.BlockPos destination);
@@ -180,7 +180,7 @@ public final class LobbyCountdownService<P> {
                 adapter.dimension(player),
                 LobbyCountdown.start(seconds, ticksPerSecond, pose)));
         adapter.send(player, Messages.lobbyCountdownStarted(seconds));
-        adapter.playStepSound(player);
+        adapter.playStepSound(player, seconds);
         return StartResult.STARTED;
     }
 
@@ -207,15 +207,16 @@ public final class LobbyCountdownService<P> {
             if (pending.get(key) != entry) {
                 continue;
             }
+            if (!adapter.available(entry.player())) {
+                // The player is already gone, so nothing is sent: the countdown just ends.
+                pending.remove(key, entry);
+                continue;
+            }
             finish(key, entry, advance(entry));
         }
     }
 
     private LobbyCountdown.Tick advance(Pending<P> entry) {
-        if (!adapter.available(entry.player())) {
-            // The player is already gone, so nothing is sent: the countdown just ends.
-            return entry.countdown().cancel(State.CANCELLED_DISCONNECTED);
-        }
         return entry.countdown().tick(
                 adapter.pose(entry.player()),
                 adapter.alive(entry.player()),
@@ -229,7 +230,7 @@ public final class LobbyCountdownService<P> {
         }
         if (result.secondsToShow() > 0) {
             adapter.send(entry.player(), Messages.lobbyCountdownTick(result.secondsToShow()));
-            adapter.playStepSound(entry.player());
+            adapter.playStepSound(entry.player(), result.secondsToShow());
         }
         State state = result.state();
         if (!state.ended()) {
@@ -237,7 +238,9 @@ public final class LobbyCountdownService<P> {
         }
         pending.remove(key, entry);
         if (state.teleports()) {
-            if (!adapter.complete(entry.player(), entry.target(), entry.destination())) {
+            if (adapter.complete(entry.player(), entry.target(), entry.destination())) {
+                adapter.send(entry.player(), Messages.lobbySuccess());
+            } else {
                 adapter.send(entry.player(), Messages.lobbyTeleportFailed());
             }
             return;

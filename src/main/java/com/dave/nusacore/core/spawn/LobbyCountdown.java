@@ -21,8 +21,11 @@ import net.minecraft.network.chat.Component;
  */
 public final class LobbyCountdown {
 
-    /** The most seconds a countdown may last. */
-    public static final int MAX_SECONDS = 30;
+    /** The most seconds a countdown may last, taken from the shared countdown length. */
+    public static final int MAX_SECONDS = Messages.LOBBY_COUNTDOWN_SECONDS;
+
+    /** Server ticks in one countdown second: vanilla's nominal tick rate is 20 per second. */
+    public static final int TICKS_PER_SECOND = 20;
 
     /** Position changes at or below this distance are treated as the same spot, not as movement. */
     private static final double POSITION_EPSILON = 1.0E-4;
@@ -131,8 +134,9 @@ public final class LobbyCountdown {
      * the permission node, and still be in the dimension the countdown was started in. A cancelled condition ends
      * the countdown on that tick and is never revisited, so a player cannot wait out a condition change.
      *
-     * <p>The full countdown is announced by the caller when it starts. This method announces each later second,
-     * and on the tick the last shown second has lasted its full time it reports {@link State#COMPLETED}.
+     * <p>The full countdown is announced by the caller when it starts. Each later second is announced after a full
+     * second of server time, and the countdown completes on the tick after the last shown second has lasted its
+     * full second, so the player sees the whole countdown and then moves.
      *
      * @param pose the player pose now, or {@code null} when the player is gone
      * @param alive whether the player is currently alive

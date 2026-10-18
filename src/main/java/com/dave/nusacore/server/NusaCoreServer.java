@@ -9,6 +9,7 @@ import com.mojang.brigadier.CommandDispatcher;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerPlayer;
 
 /** Wires the server gameplay features. Client code is never referenced here. */
 public final class NusaCoreServer {
@@ -28,7 +29,8 @@ public final class NusaCoreServer {
         LobbyService lobbyService = new LobbyService(SPAWN_CONFIG);
         LobbyCountdownRuntime countdown = LobbyCountdownRuntime.install(lobbyService);
         lobbyCountdown = countdown;
-        LobbyCommand lobbyCommand = new LobbyCommand(countdown.service());
+        LobbyCommand<ServerPlayer> lobbyCommand =
+                new LobbyCommand<>(countdown.service(), CommandSourceStack::getPlayer);
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, buildContext, selection) -> registerLobby(dispatcher, lobbyCommand));
     }
@@ -37,7 +39,7 @@ public final class NusaCoreServer {
      * Adds {@code /lobby} unless the dispatcher already has it. Another mod's command is never replaced, which
      * keeps NusaCore from breaking a server that already provides a lobby command.
      */
-    static void registerLobby(CommandDispatcher<CommandSourceStack> dispatcher, LobbyCommand lobbyCommand) {
+    static void registerLobby(CommandDispatcher<CommandSourceStack> dispatcher, LobbyCommand<?> lobbyCommand) {
         if (dispatcher.getRoot().getChild(LobbyCommand.NAME) != null) {
             return;
         }

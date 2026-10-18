@@ -2,7 +2,6 @@ package com.dave.nusacore.server.spawn;
 
 import com.dave.nusacore.core.message.Messages;
 import com.dave.nusacore.core.permission.PermissionNodes;
-import com.dave.nusacore.core.spawn.LobbyService;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -10,9 +9,9 @@ import com.mojang.brigadier.context.CommandContext;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Objects;
+import java.util.function.Function;
 
 /**
  * Registers {@code /lobby}, which starts a countdown that ends in the teleport.
@@ -27,16 +26,26 @@ import java.util.Objects;
  * {@link LevelLobbyTarget}, which both reads the view and performs the move, so a player in another dimension is
  * transferred to the Overworld spawn. A failed start sends only a message and leaves the player where they were.
  *
+ * <p>The player is a type parameter, matching {@link LobbyCountdownService}, so the command shape and its
+ * non-player path can be exercised without a running server. Production uses {@code ServerPlayer} and reads it
+ * from the command source.
+ *
  * <p>The command is not registered when the dispatcher already has {@code /lobby}, so a command from another
  * mod wins instead of being replaced.
  */
-public final class LobbyCommand {
+public final class LobbyCommand<P> {
     public static final String NAME = "lobby";
 
-    private final LobbyCountdownService<ServerPlayer> countdown;
+    private final LobbyCountdownService<P> countdown;
+    private final Function<CommandSourceStack, P> playerOf;
 
-    public LobbyCommand(LobbyCountdownService<ServerPlayer> countdown) {
+    /**
+     * @param countdown the countdown owner that decides and reports
+     * @param playerOf reads the executing player from a command source, or {@code null} for console and blocks
+     */
+    public LobbyCommand(LobbyCountdownService<P> countdown, Function<CommandSourceStack, P> playerOf) {
         this.countdown = Objects.requireNonNull(countdown, "countdown");
+        this.playerOf = Objects.requireNonNull(playerOf, "playerOf");
     }
 
     /** The command tree, so its shape can be inspected without a dispatcher or a running game. */
@@ -46,7 +55,7 @@ public final class LobbyCommand {
 
     private int execute(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayer();
+        P player = playerOf.apply(source);
         if (player == null) {
             source.sendFailure(Messages.playersOnly());
             return 0;

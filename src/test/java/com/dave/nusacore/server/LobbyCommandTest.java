@@ -4,8 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.dave.nusacore.core.config.SpawnConfig;
+import com.dave.nusacore.core.message.Messages;
 import com.dave.nusacore.core.spawn.LobbyService;
+import com.dave.nusacore.server.spawn.FakeLobbyPlayer;
 import com.dave.nusacore.server.spawn.LobbyCommand;
+import com.dave.nusacore.server.spawn.LobbyCountdownService;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -20,7 +23,11 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class LobbyCommandTest {
-    private final LobbyCommand lobbyCommand = new LobbyCommand(new LobbyService(SpawnConfig.DEFAULT));
+    private final FakeLobbyPlayer adapter = FakeLobbyPlayer.onSafeFloor();
+    private final LobbyCountdownService<FakeLobbyPlayer.Player> countdown =
+            LobbyCountdownService.create(new LobbyService(SpawnConfig.DEFAULT), adapter);
+    private final LobbyCommand<FakeLobbyPlayer.Player> lobbyCommand =
+            new LobbyCommand<>(countdown, source -> source.getPlayer() == null ? null : adapter.player());
 
     @Test
     void commandIsRegisteredWithTheExpectedNameAndNoArguments() {
@@ -47,7 +54,7 @@ class LobbyCommandTest {
     }
 
     @Test
-    void nonPlayerSourceFailsWithoutTeleporting() throws Exception {
+    void nonPlayerSourceFailsWithoutStartingACountdown() throws Exception {
         CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
         NusaCoreServer.registerLobby(dispatcher, lobbyCommand);
         RecordingSource console = new RecordingSource();
@@ -55,13 +62,18 @@ class LobbyCommandTest {
         int result = dispatcher.execute(LobbyCommand.NAME, source(console));
 
         assertEquals(0, result, "a failed command reports no success");
-        assertTrue(console.failures.stream().anyMatch(text -> text.contains("Only players")),
+        assertEquals(List.of(Messages.playersOnly().getString()), console.failures,
                 "console gets the shared player-only message");
+        assertEquals(0, countdown.pendingCount(), "console cannot start a countdown");
     }
 
     @Test
-    void theCommandTreeCanBeBuiltWithoutARunningServer() {
-        assertDoesNotThrow(() -> lobbyCommand.builder());
+    void theCommandOverTheFakeCountdownHasTheExpectedShape() {
+        var node = lobbyCommand.builder().build();
+
+        assertEquals(LobbyCommand.NAME, node.getName());
+        assertNotNull(node.getCommand());
+        assertTrue(node.getChildren().isEmpty());
     }
 
     private static CommandSourceStack source(CommandSource commandSource) {
