@@ -1,7 +1,6 @@
 package com.dave.nusacore.server.spawn;
 
 import com.dave.nusacore.core.message.Messages;
-import com.dave.nusacore.core.permission.PermissionNodes;
 import com.dave.nusacore.core.spawn.LobbyCountdown;
 import com.dave.nusacore.core.spawn.LobbyCountdown.Pose;
 import com.dave.nusacore.core.spawn.LobbyCountdown.State;
@@ -36,23 +35,41 @@ import java.util.UUID;
  */
 public final class LobbyCountdownService<P> {
 
+    /** Server ticks per countdown second: vanilla's nominal tick rate is 20 per second. */
+    public static final int TICKS_PER_SECOND = 20;
+
     /** What one start produced. */
     public enum StartResult {
         STARTED,
         ALREADY_PENDING,
-        /** The permission node is gone by the time the request runs. */
         DENIED,
-        /** There is no Overworld to teleport to. */
         NO_OVERWORLD,
-        /** Nothing safe was found near the world spawn. */
-        NO_SAFE_DESTINATION
+        NO_SAFE_DESTINATION,
+        PLAYER_GONE;
+
+        /** True when a countdown is now running. */
+        public boolean started() {
+            return this == STARTED;
+        }
+
+        /** The message for a failed start, or {@code null} when a countdown started. */
+        public Component message() {
+            return switch (this) {
+                case STARTED -> null;
+                case ALREADY_PENDING -> Messages.lobbyAlreadyPending();
+                case DENIED -> Messages.noPermission();
+                case NO_OVERWORLD -> Messages.lobbyNoOverworld();
+                case NO_SAFE_DESTINATION -> Messages.lobbyNoSafeDestination();
+                case PLAYER_GONE -> Messages.lobbyCountdownCancelledDisconnected();
+            };
+        }
     }
 
     /** The game operations one countdown needs. Implementations run on the server thread. */
     public interface Adapter<P> {
 
         /** The player's unique id, which is the countdown key. */
-        UUID id(P);
+        UUID id(P player);
 
         /** True when the player may still run {@code /lobby}: the same node the command gate uses. */
         boolean permitted(P player);
@@ -66,20 +83,20 @@ public final class LobbyCountdownService<P> {
         /** True when the player is alive and still attached to the server. */
         boolean alive(P player);
 
-        /** The Overworld destination, or {@code null} when the server has no Overworld. */
-        LobbyTarget<P> overworld();
+        /** The Overworld destination for this player, or {@code null} when the Overworld is missing. */
+        LobbyTarget<P> overworld(P player);
+
+        /** True when the player is still connected and not removed, so feedback can be delivered. */
+        boolean available(P player);
 
         /** Sends countdown feedback to the player. */
         void send(P player, Component message);
 
-        /** Plays a countdown step sound for the player. */
+        /** Plays a countdown step sound. Called when a second is announced and when the countdown starts. */
         void playStepSound(P player);
 
-        /** Plays the completion sound and reports success for the player. */
-        void playCompleteSound(P player);
-
-        /** Moves the player. Called only after every check passed on the last second. */
-        void teleport(P player, LobbyTarget<P> target, net.minecraft.core.BlockPos destination);
+        /** Plays the completion cue and moves the player. Returns false when the server refused the move. */
+        boolean complete(P player, LobbyTarget<P> target, net.minecraft.core.BlockPos destination);
     }
 
     private final LobbyService lobbyService;
@@ -89,7 +106,7 @@ public final class LobbyCountdownService<P> {
     private final Map<UUID, Pending<P>> pending = new LinkedHashMap<>();
 
     /**
-     * @param lobbyService resolves the safe destination, the same logic the command used before this slice
+     * @param lobbyService resolves the safe destination with the same logic the command used before this slice
      * @param adapter the game operations
      * @param seconds countdown length in one-second steps
      * @param ticksPerSecond server ticks per step
@@ -101,7 +118,7 @@ public final class LobbyCountdownService<P> {
         this.ticksPerSecond = ticksPerSecond;
     }
 
-    /** The default service: the countdown length from {@link Messages}, at the vanilla 20 ticks per second. */
+    /** The shipping service: the countdown length from {@link Messages} at {@link #TICKS_PER_SECOND}. */
     public static <P> LobbyCountdownService<P> create(LobbyService lobbyService, Adapter<P> adapter) {
         return new LobbyCountdownService<>(
                 lobbyService, adapter, Messages.LOBBY_COUNTDOWN_SECONDS, TICKS_PER_SECOND);
@@ -112,9 +129,9 @@ public final class LobbyCountdownService<P> {
         return pending.containsKey(adapter.id(player));
     }
 
-    /** The players with a running countdown, in the order they started. */
-    public Collection<UUID> pendingPlayers() {
-        return pending.keySet();
+    /** The keys of the running countdowns, in the order they started. */
+    public Collection<UUID> pendingKeys() {
+        return List.copyOf(pending.keySet());
     }
 
     /** How many countdowns are running. */
@@ -135,90 +152,95 @@ public final class LobbyCountdownService<P> {
      * destination, the player's liveness, and only then the countdown. The destination is resolved once, here, so
      * the safety rules see the world as it is when the player asks; the teleport itself re-checks the player.
      *
-     * @return what happened, so the caller can decide the command result
+     * @return what happened, so the caller can choose the command result
      */
     public StartResult start(P player) {
         Objects.requireNonNull(player, "player");
-        UUID id = adapter.id(player);
-        if (pending.containsKey(id)) {
-            adapter.send(player, Messages.lobbyAlreadyPending());
-            return StartResult.ALREADY_PENDING;
+        if (pending.containsKey(adapter.id(player))) {
+            return report(player, StartResult.ALREADY_PENDING);
         }
         if (!adapter.permitted(player)) {
-            adapter.send(player, Messages.noPermission());
-            return StartResult.DENIED;
+            return report(player, StartResult.DENIED);
         }
-        LobbyTarget<P> target = adapter.overworld();
+        LobbyTarget<P> target = adapter.overworld(player);
         LobbyService.Outcome outcome = lobbyService.resolve(target == null ? null : target.surface());
-        if (outcome.status() == LobbyService.Outcome.Status.NO_OVERWORLD) {
-            adapter.send(player, LobbyService.message(outcome));
-            return StartResult.NO_OVERWORLD;
-        }
         if (!outcome.ready()) {
-            adapter.send(player, LobbyService.message(outcome));
-            return StartResult.NO_SAFE_DESTINATION;
+            return report(player, outcome.status() == LobbyService.Outcome.Status.NO_OVERWORLD
+                    ? StartResult.NO_OVERWORLD
+                    : StartResult.NO_SAFE_DESTINATION);
         }
         Pose pose = adapter.pose(player);
-        if (pose == null || !adapter.alive(player)) {
-            adapter.send(player, Messages.lobbyCountdownCancelledDisconnected());
-            return StartResult.DENIED;
+        if (pose == null || !adapter.available(player) || !adapter.alive(player)) {
+            return report(player, StartResult.PLAYER_GONE);
         }
-        Object dimension = adapter.dimension(player);
-        pending.put(id, new Pending<>(
+        pending.put(adapter.id(player), new Pending<>(
                 player,
                 target,
                 outcome.destination(),
-                dimension,
+                adapter.dimension(player),
                 LobbyCountdown.start(seconds, ticksPerSecond, pose)));
         adapter.send(player, Messages.lobbyCountdownStarted(seconds));
         adapter.playStepSound(player);
         return StartResult.STARTED;
     }
 
+    private StartResult report(P player, StartResult result) {
+        Component message = result.message();
+        if (message != null) {
+            adapter.send(player, message);
+        }
+        return result;
+    }
+
     /**
-     * Advanced every running countdown by one server tick.
+     * Advances every running countdown by one server tick.
      *
-     * <p>A countdown that ends is removed from the map before anything is sent, so no ending can be reported
-     * twice and a player can start a new request on the next tick.
+     * <p>A countdown that ends is removed from the map before anything is sent, so an ending is reported once and
+     * the player can start a new request on the next tick.
      */
     public void tick() {
         if (pending.isEmpty()) {
             return;
         }
-        List<Pending<P>> entries = new ArrayList<>(pending.values());
-        for (Pending<P> entry : entries) {
-            UUID id = adapter.id(entry.player());
-            if (pending.get(id) != entry) {
+        for (Pending<P> entry : new ArrayList<>(pending.values())) {
+            UUID key = adapter.id(entry.player());
+            if (pending.get(key) != entry) {
                 continue;
             }
-            if (!adapter.alive(entry.player())) {
-                end(id, entry, entry.countdown().cancel(State.CANCELLED_DISCONNECTED));
-                continue;
-            }
-            LobbyCountdown.Tick result = entry.countdown().tick(
-                    adapter.pose(entry.player()),
-                    true,
-                    adapter.permitted(entry.player()),
-                    Objects.equals(adapter.dimension(entry.player()), entry.dimension()));
-            if (result.secondsToShow() > 0) {
-                adapter.send(entry.player(), Messages.lobbyCountdownTick(result.secondsToShow()));
-                adapter.playStepSound(entry.player());
-            }
-            if (result.state().ended()) {
-                end(id, entry, result);
-            }
+            finish(key, entry, advance(entry));
         }
     }
 
-    private void end(UUID id, Pending<P> entry, LobbyCountdown.Tick result) {
+    private LobbyCountdown.Tick advance(Pending<P> entry) {
+        if (!adapter.available(entry.player())) {
+            // The player is already gone, so nothing is sent: the countdown just ends.
+            return entry.countdown().cancel(State.CANCELLED_DISCONNECTED);
+        }
+        return entry.countdown().tick(
+                adapter.pose(entry.player()),
+                adapter.alive(entry.player()),
+                adapter.permitted(entry.player()),
+                Objects.equals(adapter.dimension(entry.player()), entry.dimension()));
+    }
+
+    private void finish(UUID key, Pending<P> entry, LobbyCountdown.Tick result) {
         if (result == null) {
             return;
         }
-        pending.remove(id, entry);
+        if (result.secondsToShow() > 0) {
+            adapter.send(entry.player(), Messages.lobbyCountdownTick(result.secondsToShow()));
+            adapter.playStepSound(entry.player());
+        }
         State state = result.state();
+        if (!state.ended()) {
+            return;
+        }
+        pending.remove(key, entry);
         if (state.teleports()) {
-            adapter.playCompleteSound(entry.player());
-            adapter.teleport(entry.player(), entry.target(), entry.destination());
+            if (!adapter.complete(entry.player(), entry.target(), entry.destination())) {
+                adapter.send(entry.player(), Messages.lobbyTeleportFailed());
+            }
+            return;
         }
         Component message = state.message();
         if (message != null) {
@@ -227,23 +249,22 @@ public final class LobbyCountdownService<P> {
     }
 
     /**
-     * Cancels a player's countdown for a reason outside the tick loop, such as a disconnect.
+     * Cancels a player's countdown for a reason outside the tick loop, such as a disconnect or a death.
      *
      * @param reported true when the player can still receive the message
      * @return the ending state, or {@code null} when the player had no countdown
      */
     public State cancel(P player, State reason, boolean reported) {
         Objects.requireNonNull(reason, "reason");
-        UUID id = adapter.id(player);
-        Pending<P> entry = pending.get(id);
+        Pending<P> entry = pending.get(adapter.id(player));
         if (entry == null) {
             return null;
         }
-        pending.remove(id);
         LobbyCountdown.Tick result = entry.countdown().cancel(reason);
         if (result == null) {
             return null;
         }
+        pending.remove(adapter.id(player), entry);
         if (reported) {
             Component message = result.state().message();
             if (message != null) {
@@ -253,11 +274,10 @@ public final class LobbyCountdownService<P> {
         return result.state();
     }
 
-    /** Cancels every running countdown, for a server stop. */
+    /** Cancels every running countdown, for a server stop. Returns how many were cancelled. */
     public int cancelAll(State reason, boolean reported) {
-        List<Pending<P>> entries = new ArrayList<>(pending.values());
         int cancelled = 0;
-        for (Pending<P> entry : entries) {
+        for (Pending<P> entry : new ArrayList<>(pending.values())) {
             if (cancel(entry.player(), reason, reported) != null) {
                 cancelled++;
             }

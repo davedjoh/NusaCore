@@ -35,14 +35,14 @@ public final class LevelLobbyTarget implements LobbyTarget<ServerPlayer> {
     }
 
     @Override
-    public void teleport(ServerPlayer player, BlockPos destination) {
-        player.teleport(new TeleportTransition(
+    public boolean teleport(ServerPlayer player, BlockPos destination) {
+        return player.teleport(new TeleportTransition(
                 level,
                 LobbyService.feetPosition(destination),
                 Vec3.ZERO,
                 player.getYRot(),
                 player.getXRot(),
                 Set.<Relative>of(),
-                TeleportTransition.DO_NOTHING));
+                TeleportTransition.DO_NOTHING)) != null;
     }
 }

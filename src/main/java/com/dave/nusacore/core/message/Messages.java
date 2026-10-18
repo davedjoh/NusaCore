@@ -26,6 +26,8 @@ public final class Messages {
     public static final String LOBBY_COUNTDOWN_CANCELLED_DISCONNECTED =
             "nusacore.command.lobby.countdown.cancelled.disconnected";
     public static final String LOBBY_COUNTDOWN_SERVER_STOPPING = "nusacore.command.lobby.countdown.server_stopping";
+    public static final String LOBBY_TELEPORT_FAILED = "nusacore.command.lobby.teleport_failed";
+    public static final String LOBBY_NOT_AVAILABLE = "nusacore.command.lobby.not_available";
 
     /** Number of seconds in one lobby countdown, the unit the countdown messages are formatted with. */
     public static final int LOBBY_COUNTDOWN_SECONDS = 5;
@@ -101,5 +103,15 @@ public final class Messages {
     /** The server is stopping, which ended the countdown. Sent while the player can still receive it. */
     public static Component lobbyCountdownServerStopping() {
         return MessageText.component(LOBBY_COUNTDOWN_SERVER_STOPPING);
+    }
+
+    /** The last second passed but the server refused the move, so the player stayed where they were. */
+    public static Component lobbyTeleportFailed() {
+        return MessageText.component(LOBBY_TELEPORT_FAILED);
+    }
+
+    /** The player is no longer connected, so no countdown can start or continue. */
+    public static Component lobbyNotAvailable() {
+        return MessageText.component(LOBBY_NOT_AVAILABLE);
     }
 }

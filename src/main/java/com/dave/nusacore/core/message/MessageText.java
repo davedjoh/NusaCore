@@ -29,7 +29,9 @@ public final class MessageText {
             Map.entry(Messages.LOBBY_COUNTDOWN_CANCELLED_DISCONNECTED,
                     "Lobby teleport cancelled because you disconnected."),
             Map.entry(Messages.LOBBY_COUNTDOWN_SERVER_STOPPING,
-                    "Lobby teleport cancelled because the server is stopping."));
+                    "Lobby teleport cancelled because the server is stopping."),
+            Map.entry(Messages.LOBBY_TELEPORT_FAILED, "The server could not move you. You were not teleported."),
+            Map.entry(Messages.LOBBY_NOT_AVAILABLE, "You are no longer connected, so nothing was teleported."));
 
     private MessageText() {
     }

@@ -24,6 +24,7 @@ public interface LobbyTarget<P> {
      *
      * @param player the executing player
      * @param destination the block the player stands in, read from {@link #surface()}
+     * @return true when the server accepted the move, false when the player could not be moved
      */
-    void teleport(P player, BlockPos destination);
+    boolean teleport(P player, BlockPos destination);
 }
