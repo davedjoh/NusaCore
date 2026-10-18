@@ -1,4 +1,5 @@
 # NusaCore
+<<<<<<< HEAD
 
 NusaCore is a client and server Fabric mod for Minecraft 26.2. Players install the modpack. The server is authoritative; future clients render approved state and send validated requests.
 
@@ -49,3 +50,6 @@ See [`docs/compatibility.md`](docs/compatibility.md) for pinned coordinates, off
 The source of truth is [`../context.md`](../context.md). Key decisions are SQLite behind a repository boundary for future persistent state, free initial claims, owner-only claim management, offline trust changes, ownership transfer, commit-before-cache mutation, and vanilla world spawn as the lobby source. Claim expiry includes UTC `expires_at` from the initial model, but policy is still open. Networking and client UI are later slices after quest; no chest-style GUI is planned.
 
 No EULA was accepted, so no world was generated in the smoke run. The server smoke reached the normal EULA gate and logged the NusaCore initializer line before stopping. `/lobby` has not been executed in a running server by a real player, no LuckPerms grant was tested, and client runtime launch and connections are not verified. Generated build, run, and Gradle cache directories are ignored.
+=======
+NusaCore is custom mod for my minecraft server
+>>>>>>> e196d15a969ba53b6a97b16f8798a24b6071f503
