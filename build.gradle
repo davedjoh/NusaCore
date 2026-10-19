@@ -22,6 +22,7 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
     clientImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
     include(implementation("me.lucko:fabric-permissions-api:${permissions_api_version}"))
+    include(implementation("org.xerial:sqlite-jdbc:${sqlite_jdbc_version}"))
     testImplementation 'org.junit.jupiter:junit-jupiter:5.14.0'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.14.0'
 }
@@ -48,4 +49,5 @@ test {
     dependsOn jar
     systemProperty 'nusacore.jar', tasks.jar.archiveFile.get().asFile.absolutePath
     systemProperty 'nusacore.version', project.version
+    systemProperty 'nusacore.sqlite.version', sqlite_jdbc_version
 }

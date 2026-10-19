@@ -41,10 +41,21 @@ class BootstrapMetadataTest {
             assertFalse(metadata.getAsJsonObject("depends").has("voxy"));
             assertFalse(metadata.getAsJsonObject("depends").has("voxyserver"));
             var nested = metadata.getAsJsonArray("jars");
-            assertEquals(1, nested.size());
-            String permissions = nested.get(0).getAsJsonObject().get("file").getAsString();
-            assertTrue(permissions.endsWith("fabric-permissions-api-0.7.0.jar"));
-            assertNotNull(jar.getEntry(permissions));
+            List<String> nestedFiles = new ArrayList<>();
+            nested.forEach(element -> nestedFiles.add(element.getAsJsonObject().get("file").getAsString()));
+            assertEquals(2, nestedFiles.size(), () -> "nested jars changed: " + nestedFiles);
+            String permissions = nestedFiles.stream()
+                    .filter(file -> file.endsWith("fabric-permissions-api-0.7.0.jar"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("the permissions api jar is no longer nested"));
+            String sqlite = nestedFiles.stream()
+                    .filter(file -> file.contains("sqlite-jdbc"))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("the sqlite driver jar is not nested"));
+            for (String file : nestedFiles) {
+                assertNotNull(jar.getEntry(file), () -> "declared nested jar is missing from the archive: " + file);
+            }
+            assertTrue(sqlite.endsWith("sqlite-jdbc-" + System.getProperty("nusacore.sqlite.version") + ".jar"));
             assertTrue(jar.stream().noneMatch(e -> e.getName().contains("voxy") || e.getName().contains("sodium")));
         }
     }

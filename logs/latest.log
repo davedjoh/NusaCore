@@ -1,1 +1,44 @@
-[23:05:25] [Test worker/INFO]: NusaCore bootstrap initialized: /lobby enabled
+[08:40:06] [Test worker/INFO]: NusaCore initialized: /lobby enabled, claim storage opens with the server
+[08:40:07] [Test worker/WARN]: Claim storage stopped before it drained; 2 accepted operation(s) did not finish within 1s and are answered as CLOSED. A queued operation answered this way never ran. An operation that was already running may still have committed before the interrupt landed; that is the one durability limit of a timed-out close, and its caller was told CLOSED rather than left waiting
+[08:40:07] [nusacore-claim-shutdown-test/WARN]: Claim storage could not initialise claim storage at C:\Users\Dave\AppData\Local\Temp\junit-16840453374647294471\blocker\nusacore-claims.db
+java.sql.SQLException: cannot create the claim database directory: C:\Users\Dave\AppData\Local\Temp\junit-16840453374647294471\blocker
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.prepare(SqliteClaimRepository.java:277)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.lambda$openAsync$0(SqliteClaimRepository.java:164)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.runOperation(SqliteClaimRepository.java:867)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.run(SqliteClaimRepository.java:830)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+[08:40:07] [nusacore-claim-shutdown-test/WARN]: Claim storage stopped before it drained; 1 accepted operation(s) were left over after the worker stopped accepting and are answered as CLOSED. A queued operation answered this way never ran. An operation that was already running may still have committed before the interrupt landed; that is the one durability limit of a timed-out close, and its caller was told CLOSED rather than left waiting
+[08:40:07] [nusacore-claim-shutdown-test/WARN]: Claim storage could not initialise claim storage at C:\Users\Dave\AppData\Local\Temp\junit-5140555228665844362\blocker\nusacore-claims.db
+java.sql.SQLException: cannot create the claim database directory: C:\Users\Dave\AppData\Local\Temp\junit-5140555228665844362\blocker
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.prepare(SqliteClaimRepository.java:277)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.lambda$openAsync$0(SqliteClaimRepository.java:164)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.runOperation(SqliteClaimRepository.java:867)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.run(SqliteClaimRepository.java:830)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+[08:40:11] [Test worker/INFO]: Claim storage opening at C:\Users\Dave\AppData\Local\Temp\junit-8344517886623786231\nested\data\nusacore-claims.db; claims are not readable until the load finishes
+[08:40:11] [nusacore-claim-storage/INFO]: Claim cache loaded 0 claim(s) and is ready
+[08:40:11] [Test worker/INFO]: Claim storage closed with 0 claim(s) cached
+[08:40:11] [Test worker/INFO]: Claim storage opening at C:\Users\Dave\AppData\Local\Temp\junit-4587746693571577759\open-failed.db; claims are not readable until the load finishes
+[08:40:11] [Test worker/INFO]: Claim storage closed with 1 claim(s) cached
+[08:40:11] [Test worker/INFO]: Claim storage opening at C:\Users\Dave\AppData\Local\Temp\junit-7806138550314056362\blocked\nusacore-claims.db; claims are not readable until the load finishes
+[08:40:11] [Test worker/INFO]: Claim cache loaded 1 claim(s) and is ready
+[08:40:11] [Test worker/INFO]: Claim storage closed with 1 claim(s) cached
+[08:40:11] [Test worker/ERROR]: Claim storage could not be started for C:\Users\Dave\AppData\Local\Temp\junit-6831309183397626578\missing.db; claims are unavailable for this session
+[08:40:11] [Test worker/INFO]: Claim storage opening at C:\Users\Dave\AppData\Local\Temp\junit-8145754942296487321\failing.db; claims are not readable until the load finishes
+[08:40:11] [Test worker/ERROR]: Claim cache could not be loaded from C:\Users\Dave\AppData\Local\Temp\junit-8145754942296487321\failing.db: FAILURE disk gone; claims stay unavailable for this session
+[08:40:11] [Test worker/INFO]: Claim storage closed with 0 claim(s) cached
+[08:40:11] [Test worker/INFO]: Claim storage opening at C:\Users\Dave\AppData\Local\Temp\junit-6958281825911831832\blocker\nusacore-claims.db; claims are not readable until the load finishes
+[08:40:11] [check-worker/WARN]: Claim storage could not initialise claim storage at C:\Users\Dave\AppData\Local\Temp\junit-6958281825911831832\blocker\nusacore-claims.db
+java.sql.SQLException: cannot create the claim database directory: C:\Users\Dave\AppData\Local\Temp\junit-6958281825911831832\blocker
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.prepare(SqliteClaimRepository.java:277)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository.lambda$openAsync$0(SqliteClaimRepository.java:164)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.runOperation(SqliteClaimRepository.java:867)
+	at com.dave.nusacore.core.storage.sqlite.SqliteClaimRepository$PendingTask.run(SqliteClaimRepository.java:830)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1090)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:614)
+	at java.base/java.lang.Thread.run(Thread.java:1474)
+[08:40:11] [check-worker/WARN]: Claim storage stopped before it drained; 1 accepted operation(s) were left over after the worker stopped accepting and are answered as CLOSED. A queued operation answered this way never ran. An operation that was already running may still have committed before the interrupt landed; that is the one durability limit of a timed-out close, and its caller was told CLOSED rather than left waiting

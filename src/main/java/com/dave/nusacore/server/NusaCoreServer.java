@@ -4,6 +4,7 @@ import com.dave.nusacore.core.config.SpawnConfig;
 import com.dave.nusacore.core.spawn.LobbyService;
 import com.dave.nusacore.server.spawn.LobbyCommand;
 import com.dave.nusacore.server.spawn.LobbyCountdownRuntime;
+import com.dave.nusacore.server.storage.ClaimStorageLifecycle;
 
 import com.mojang.brigadier.CommandDispatcher;
 
@@ -22,8 +23,8 @@ public final class NusaCoreServer {
     }
 
     /**
-     * Registers gameplay commands and the countdown tick and lifecycle hooks. Called once from the server
-     * entrypoint.
+     * Registers gameplay commands, the countdown tick and lifecycle hooks, and claim storage. Called once from the
+     * server entrypoint.
      */
     public static void registerCommands() {
         LobbyService lobbyService = new LobbyService(SPAWN_CONFIG);
@@ -33,6 +34,8 @@ public final class NusaCoreServer {
                 new LobbyCommand<>(countdown.service(), CommandSourceStack::getPlayer);
         CommandRegistrationCallback.EVENT.register(
                 (dispatcher, buildContext, selection) -> registerLobby(dispatcher, lobbyCommand));
+        // Storage opens on server start, not here, because the world path is only known once a server exists.
+        ClaimStorageLifecycle.install();
     }
 
     /**
@@ -49,5 +52,16 @@ public final class NusaCoreServer {
     /** The countdown runtime for the current session, or {@code null} before the entrypoint ran. */
     public static LobbyCountdownRuntime lobbyCountdown() {
         return lobbyCountdown;
+    }
+
+    /**
+     * The claim store for the running server, or {@code null} before the server starts or after it stops.
+     *
+     * <p>Reads must go through {@link com.dave.nusacore.core.claim.ClaimStore#findCached} so the game thread never
+     * touches storage. Mutations go through the store's create, update, and delete, which commit before the cache
+     * changes.
+     */
+    public static com.dave.nusacore.core.claim.ClaimStore claimStore() {
+        return ClaimStorageLifecycle.store().orElse(null);
     }
 }
