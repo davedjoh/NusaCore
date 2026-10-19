@@ -1,0 +1,20 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.dave.nusacore.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "DispenserBlockMixin",
+    "DropperBlockMixin",
+    "FireBlockMixin",
+    "FlowingFluidMixin",
+    "HopperBlockEntityMixin",
+    "MinecartHopperMixin",
+    "PistonStructureResolverMixin",
+    "ProjectileMixin",
+    "ServerExplosionMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

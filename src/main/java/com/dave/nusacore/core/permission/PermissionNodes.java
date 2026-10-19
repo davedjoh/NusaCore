@@ -26,6 +26,26 @@ public final class PermissionNodes {
     /** Allows {@code /lobby}, the teleport to the Overworld world spawn. */
     public static final String SPAWN_LOBBY = "nusacore.spawn.lobby";
 
+    /** Allows {@code /claim}, claiming the player's current chunk. */
+    public static final String CLAIM_CREATE = "nusacore.claim.create";
+
+    /** Allows {@code /unclaim}, releasing the player's own claim. */
+    public static final String CLAIM_UNCLAIM = "nusacore.claim.unclaim";
+
+    /** Allows {@code /trust} and {@code /untrust} on the player's own claim. */
+    public static final String CLAIM_TRUST = "nusacore.claim.trust";
+
+    /** Allows creating and removing administrator claims through {@code /claim admin}. */
+    public static final String CLAIM_ADMIN = "nusacore.claim.admin";
+
+    /**
+     * Skips claim protection. This is the one bypass node named in the project specification.
+     *
+     * <p>It is deliberately separate from {@link #CLAIM_ADMIN}: bypassing protection never grants the right to
+     * create, remove, or manage a claim.
+     */
+    public static final String CLAIM_BYPASS = "nusacore.admin.bypass";
+
     private PermissionNodes() {
     }
 

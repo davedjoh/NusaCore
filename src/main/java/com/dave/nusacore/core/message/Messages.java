@@ -29,6 +29,24 @@ public final class Messages {
     public static final String LOBBY_TELEPORT_FAILED = "nusacore.command.lobby.teleport_failed";
     public static final String LOBBY_NOT_AVAILABLE = "nusacore.command.lobby.not_available";
 
+    public static final String CLAIM_CREATED = "nusacore.claim.created";
+    public static final String CLAIM_ALREADY_OWNED = "nusacore.claim.already_owned";
+    public static final String CLAIM_CHUNK_TAKEN = "nusacore.claim.chunk_taken";
+    public static final String CLAIM_NOT_CLAIMED = "nusacore.claim.not_claimed";
+    public static final String CLAIM_NOT_OWNER = "nusacore.claim.not_owner";
+    public static final String CLAIM_REMOVED = "nusacore.claim.removed";
+    public static final String CLAIM_ADMIN_CREATED = "nusacore.claim.admin.created";
+    public static final String CLAIM_ADMIN_REMOVED = "nusacore.claim.admin.removed";
+    public static final String CLAIM_STORAGE_UNAVAILABLE = "nusacore.claim.storage.unavailable";
+    public static final String CLAIM_STORAGE_NOT_READY = "nusacore.claim.storage.not_ready";
+    public static final String CLAIM_STORAGE_ERROR = "nusacore.claim.storage.error";
+    public static final String CLAIM_TRUST_ADDED = "nusacore.claim.trust.added";
+    public static final String CLAIM_TRUST_ALREADY = "nusacore.claim.trust.already";
+    public static final String CLAIM_TRUST_REMOVED = "nusacore.claim.trust.removed";
+    public static final String CLAIM_TRUST_NOT_FOUND = "nusacore.claim.trust.not_found";
+    public static final String CLAIM_TRUST_SELF = "nusacore.claim.trust.self";
+    public static final String CLAIM_PLAYER_NOT_FOUND = "nusacore.claim.player.not_found";
+
     /** Number of seconds in one lobby countdown, the unit the countdown messages are formatted with. */
     public static final int LOBBY_COUNTDOWN_SECONDS = 5;
 
@@ -113,5 +131,90 @@ public final class Messages {
     /** The player is no longer connected, so no countdown can start or continue. */
     public static Component lobbyNotAvailable() {
         return MessageText.component(LOBBY_NOT_AVAILABLE);
+    }
+
+    /** The current chunk is now the player's one free claim. */
+    public static Component claimCreated() {
+        return MessageText.component(CLAIM_CREATED);
+    }
+
+    /** The player already owns a free claim, so no second one was created. */
+    public static Component claimAlreadyOwned() {
+        return MessageText.component(CLAIM_ALREADY_OWNED);
+    }
+
+    /** Another claim already covers the current chunk. */
+    public static Component claimChunkTaken() {
+        return MessageText.component(CLAIM_CHUNK_TAKEN);
+    }
+
+    /** There is no claim at the current chunk. */
+    public static Component claimNotClaimed() {
+        return MessageText.component(CLAIM_NOT_CLAIMED);
+    }
+
+    /** The claim exists, but the player is not its owner. */
+    public static Component claimNotOwner() {
+        return MessageText.component(CLAIM_NOT_OWNER);
+    }
+
+    /** The player's own claim was removed. */
+    public static Component claimRemoved() {
+        return MessageText.component(CLAIM_REMOVED);
+    }
+
+    /** An administrator claim was created at the current chunk. */
+    public static Component claimAdminCreated() {
+        return MessageText.component(CLAIM_ADMIN_CREATED);
+    }
+
+    /** An administrator removed the claim at the current chunk. */
+    public static Component claimAdminRemoved() {
+        return MessageText.component(CLAIM_ADMIN_REMOVED);
+    }
+
+    /** Claim storage is not open for this server session. */
+    public static Component claimStorageUnavailable() {
+        return MessageText.component(CLAIM_STORAGE_UNAVAILABLE);
+    }
+
+    /** Claim storage is still loading, so the request was not decided. */
+    public static Component claimStorageNotReady() {
+        return MessageText.component(CLAIM_STORAGE_NOT_READY);
+    }
+
+    /** The durable write failed, so nothing was changed. */
+    public static Component claimStorageError() {
+        return MessageText.component(CLAIM_STORAGE_ERROR);
+    }
+
+    /** A player was added to the claim's trusted list. */
+    public static Component claimTrustAdded(String player) {
+        return MessageText.component(CLAIM_TRUST_ADDED, player);
+    }
+
+    /** The player already had every requested permission. */
+    public static Component claimTrustAlready(String player) {
+        return MessageText.component(CLAIM_TRUST_ALREADY, player);
+    }
+
+    /** A player was removed from the claim's trusted list. */
+    public static Component claimTrustRemoved(String player) {
+        return MessageText.component(CLAIM_TRUST_REMOVED, player);
+    }
+
+    /** The player was not trusted on this claim. */
+    public static Component claimTrustNotFound(String player) {
+        return MessageText.component(CLAIM_TRUST_NOT_FOUND, player);
+    }
+
+    /** A claim owner cannot trust themselves. */
+    public static Component claimTrustSelf() {
+        return MessageText.component(CLAIM_TRUST_SELF);
+    }
+
+    /** A player name or UUID could not be resolved. */
+    public static Component claimPlayerNotFound(String input) {
+        return MessageText.component(CLAIM_PLAYER_NOT_FOUND, input);
     }
 }
